@@ -1,0 +1,126 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Arial', sans-serif;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  background: url('https://cdn.dribbble.com/users/1052957/screenshots/3448556/media/3d13eb8a1608d9824591c3544f441bdf.gif') no-repeat center center fixed;
+  background-size: cover;
+  /* Đảm bảo hình nền phủ kín toàn bộ trang */
+}
+
+.main-container {
+  position: relative;
+  width: calc(100% - 250px); /* Đảm bảo khoảng cách 50px từ mỗi bên */
+  max-width: 1200px;
+  max-height: calc(100vh - 100px); /* Đảm bảo khoảng cách 50px từ cạnh trên và dưới */
+  margin: 50px auto; /* Căn giữa và tạo khoảng cách từ cạnh trên/bên dưới */
+  padding: 20px;
+  border: 1px solid #fff; /* Viền trắng bao quanh khung */
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); /* Đổ bóng nhẹ lên nền */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden; /* Đảm bảo không có cuộn trong khung */
+  background: rgba(255, 255, 255, 0.2); /* Nền trắng mờ để làm nổi bật nội dung */
+  backdrop-filter: blur(0.9px); /* Hiệu ứng mờ nền */
+}
+
+.content-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.data-entry {
+  margin-bottom: 20px;
+  transition: opacity 1s ease-in-out;
+  /* Hiệu ứng mờ dần cho phần nhập liệu */
+}
+
+#sheet-name {
+  padding: 10px;
+  font-size: 1rem;
+  border: 2px solid #333;
+  border-radius: 5px;
+  width: 200px;
+  margin-right: 10px;
+  transition: box-shadow 0.3s;
+}
+
+#sheet-name:focus {
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+}
+
+#fetch-data-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: transform 0.3s;
+}
+
+#fetch-data-button img {
+  width: 40px;
+  transition: transform 0.5s;
+}
+
+#fetch-data-button img:hover {
+  transform: translateX(10px);
+}
+
+#sheet-data-container {
+  width: 100%;
+  max-height: 400px;
+  /* Chiều cao tối đa của khung chứa bảng dữ liệu */
+  overflow-y: auto;
+  /* Thêm thanh cuộn dọc khi cần */
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-top: 20px;
+  background: rgba(255, 255, 255, 0.8);
+  /* Nền mờ như kính */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  /* Đổ bóng nhẹ lên nền */
+}
+
+/* Định dạng bảng dữ liệu */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  opacity: 1;
+  /* Đảm bảo bảng dữ liệu luôn hiển thị */
+}
+
+thead {
+  background-color: #7FFFD4;
+  /* Màu nền cho hàng đầu tiên */
+  color: #333;
+  position: sticky;
+  top: 0;
+  /* Đảm bảo hàng đầu tiên luôn giữ vị trí cố định */
+  z-index: 1;
+  /* Đảm bảo hàng đầu tiên nằm trên các hàng còn lại */
+}
+
+th,
+td {
+  padding: 10px;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+
+th {
+  background-color: #7FFFD4;
+  /* Màu nền cho tiêu đề cột */
+  color: #333;
+}
+
+tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
