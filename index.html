@@ -1,33 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Package Tracking</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <div class="main-container">
-        <header>
-            
-        </header>
-        
-        <div class="content-container">
-            <div class="data-entry">
-                <h1>Package Tracking</h1>
-                <input type="text" id="sheet-name" placeholder="Enter Sheet Name">
-                <button id="fetch-data-button">
-                    <img src="https://cdn-icons-png.flaticon.com/512/4187/4187365.png" alt="Fetch Data">
-                </button>
-            </div>
-            <div id="sheet-data-container">
-                <table id="sheet-data">
-                    <thead></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quản lý Mã Vận Đơn</title>
+    <!-- Sử dụng TailwindCSS -->
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body id="background" class="p-4">
+    <!-- Khung chứa nội dung chính với hiệu ứng kính mờ -->
+    <div id="content-box" class="container mx-auto glass-effect p-6 border-t-8">
+      <!-- Phần tiêu đề chính của trang -->
+      <div class="text-center mb-6 header-container">
+        <h1 id="header-text" class="text-4xl font-extrabold tracking-wide mb-2">Quản lý mã vận đơn</h1>
+        <p id="status-message" class="text-gray-0 dynamic-text-color">Quản lý mã vận đơn một cách hiệu quả</p>
+      </div>
+      <!-- Hàng chứa input và select -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="md:col-span-2">
+          <!-- Input để nhập mã vận đơn -->
+          <input type="text" id="input-field" placeholder="Nhập mã vào đây" class="w-full border-2 border-gray-300 p-4 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-lg shadow-md transition-transform duration-300 transform hover:scale-105" />
         </div>
+        <div class="md:col-span-1 text-center colored-glass-effect">
+          <!-- Select để chọn hành động -->
+          <select id="action-select" class="w-full bg-green-100 text-green-900 px-4 py-3 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-green-500 hover:bg-green-400 transition-all duration-300 glass-effect">
+            <option>Check in TQ</option>
+            <option>Check out TQ</option>
+            <option>Check in VN</option>
+            <option>Check out VN</option>
+          </select>
+        </div>
+      </div>
+      <!-- Bảng hiển thị danh sách mã vận đơn -->
+      <div class="overflow-x-auto shadow-lg rounded-lg colored-glass-effect">
+        <table class="min-w-full table-auto border border-gray-300 rounded-lg overflow-hidden">
+          <thead class="bg-transparent backdrop-filter backdrop-blur-lg bg-opacity-0">
+            <tr class="bg-white bg-opacity-0">
+              <th class="border border-gray-300 px-2 py-1 backdrop-filter backdrop-blur-lg bg-opacity-0">STT</th>
+              <th class="border border-gray-300 px-2 py-1 backdrop-filter backdrop-blur-lg bg-opacity-0">Mã.KH</th>
+              <th class="border border-gray-300 px-2 py-1 backdrop-filter backdrop-blur-lg bg-opacity-0">Mã Vận Đơn</th>
+              <th class="border border-gray-300 px-2 py-1 backdrop-filter backdrop-blur-lg bg-opacity-0">Số Kiện</th>
+              <th class="border border-gray-300 px-2 py-1 backdrop-filter backdrop-blur-lg bg-opacity-0">Loại.SP</th>
+              <th class="border border-gray-300 px-2 py-1 backdrop-filter backdrop-blur-lg bg-opacity-0">kg</th>
+              <th class="border border-gray-300 px-2 py-1 backdrop-filter backdrop-blur-lg bg-opacity-0">M3</th>
+              <th class="border border-gray-300 px-2 py-1 backdrop-filter backdrop-blur-lg bg-opacity-0">Line</th>
+              <th class="border border-gray-300 px-2 py-1 backdrop-filter backdrop-blur-lg bg-opacity-0">Ghi Chú</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- Dữ liệu sẽ được chèn vào đây -->
+          </tbody>
+        </table>
+      </div>
     </div>
+    <!-- Link tới file JavaScript -->
     <script src="scripts.js"></script>
-</body>
+    <!-- Thêm phần này vào cuối body -->
+    <div id="notification" class="hidden fixed bottom-0 left-1/2 transform -translate-x-1/2 bg-yellow-200 text-black px-4 py-2 rounded shadow-md z-50">
+      Đã nạp data vào app
+      
+    </div>
+    <!-- Lớp phủ và thông báo lỗi -->
+    
+<div id="error-overlay" class="hidden error-overlay"></div>
+
+<div id="error-notification" class="hidden error-notification">
+    ⚠️ Mã vận đơn không tồn tại ⚠️
+    <button id="ok-button">OK</button>
+</div>
+
+<!-- Thông báo thành công -->
+<div id="success-overlay" class="hidden success-overlay">✅ Mã vận đơn đã được tìm thấy! ✅</div>
+<div id="success-notification" class="hidden success-notification">
+    ✅ Mã vận đơn đã được tìm thấy! ✅
+</div>
+    <audio id="success-sound1" src="https://www.cjoint.com/doc/24_08/NHqrDRx3JP6_livechat-129007.mp3"></audio>
+    <audio id="error-sound" src="https://www.cjoint.com/doc/24_05/NEjt1oDIZJJ_beep-warning-6387.mp3"></audio>
+    <audio id="warning-sound" src="https://www.cjoint.com/doc/24_08/NHsls0LOD3T_alarm-82999.mp3"></audio>
+
+  </body>
+
 </html>
