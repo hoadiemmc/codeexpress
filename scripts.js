@@ -1,4 +1,5 @@
 //▶️.........................................................................................
+
 // Đặt hình nền dựa trên thời gian trong ngày
 function setBackground() {
   const hour = new Date().getHours();
@@ -28,6 +29,29 @@ function setBackground() {
   ];
 
   const randomImage = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+    // Lấy element audio
+    const audioElement = document.getElementById('success-sound'); 
+
+    // Kiểm tra xem đã được cấp quyền âm thanh chưa
+    if (Notification.permission === 'granted') {
+      // Đã có quyền, phát âm thanh ngay
+      audioElement.play();
+    } else if (Notification.permission !== 'denied') {
+      // Chưa có quyền, yêu cầu quyền
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          // Đã được cấp quyền, phát âm thanh
+          audioElement.play();
+        } else {
+          // Không được cấp quyền
+          console.log('Người dùng không cho phép sử dụng âm thanh.');
+        }
+      });
+    } else {
+      // Đã bị từ chối quyền trước đó
+      console.log('Người dùng đã từ chối sử dụng âm thanh.');
+    }
 
   let images;
   if (hour >= 6 && hour < 12) {
@@ -129,13 +153,13 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             console.log('Fetched Data:', data); // Log the data for debugging
             const rows = data.valueRanges.flatMap(range => range.values);
-            
+
             if (rows.length === 0) {
                 throw new Error('No data found');
             }
-            
+
             // Store data in localStorage
-            localStorage.setItem('sheetData', JSON.stringify(rows));
+            localStorage.setItem('sheetData', JSON.stringify(data.valueRanges)); // Lưu data.valueRanges vào localStorage
 
             // Play success sound
             successSound.play();
@@ -221,39 +245,97 @@ document.addEventListener('DOMContentLoaded', function() {
                     isVariableAActive = true;
                     console.log('Variable A set to:', variableA);
                 }
-                
+
                 inputField.value = ''; 
                 searchInData(variableA);
             }
         }
     }
 
+    // Function to get row information
+    function getRowInfo(row, rowIndex, columnHeaders) { // Thêm columnHeaders làm tham số
+      let rowInfo = "";
+      for (let i = 0; i < row.length; i++) {
+        const columnName = columnHeaders[i]; // Lấy tiêu đề cột
+        const cellPosition = String.fromCharCode(65 + i) + (rowIndex + 1); // Tính vị trí ô (ví dụ: A2, B2, ...)
+        rowInfo += `${columnName} - ${row[i]} - ${cellPosition}\n`;
+      }
+      return rowInfo;
+    }
+
     // Function to search for the code in stored data
     function searchInData(code) {
-        const data = loadData();
-        let codeFound = false;
-
-        console.log('Searching for code:', code);
-
-        data.forEach(row => {
-            if (row.includes(code)) {
-                codeFound = true;
+      const data = loadData();
+      let codeFound = false;
+      let sheetName = ''; // Biến lưu tên trang tính
+      console.log('Searching for code:', code);
+      // Duyệt qua từng phần tử trong mảng `data`
+      data.forEach((sheetData, sheetIndex) => {
+        // Kiểm tra xem sheetData.range có tồn tại hay không
+        if (sheetData.range) {
+          // Lấy tên trang tính từ `sheetData.range`
+          sheetName = sheetData.range.split('!')[0];
+          // Lấy tiêu đề cột từ mảng đầu tiên của sheetData.values
+          const columnHeaders = sheetData.values[0]; 
+          // Duyệt qua từng dòng trong `sheetData.values`
+          sheetData.values.forEach((row, rowIndex) => {
+            // Bỏ qua dòng đầu tiên (dòng tiêu đề)
+            if (rowIndex > 0 && row.includes(code)) {
+              codeFound = true;
+              // Tìm vị trí của mã trong row
+              const codeIndex = row.indexOf(code);
+              // Cập nhật thời gian vào data
+              updateDateTime(code, row, codeIndex);
+              // Lưu data vào localStorage
+              localStorage.setItem('sheetData', JSON.stringify(data));
+              // Lấy thông tin dòng data
+              const rowInfo = getRowInfo(row, rowIndex, columnHeaders); // Thêm columnHeaders vào getRowInfo
+              // Lấy hành động từ select
+              const action = document.getElementById('action-select').value;
+              // Log thông tin đầy đủ
+              console.log(`Đã ${action}\nTrang tính: ${sheetName}\n${rowInfo}`);
             }
-        });
-
-        if (codeFound) {
-            successCount = (successCount % 5) + 1;
-            console.log('Success count:', successCount);
-
-            successSounds[successCount - 1].play();
-            console.log('Code found:', code);
-            showSuccessNotification();
+          });
         } else {
-            errorSound.play();
-            console.log('Code not found:', code);
-            showNotification('error');
-            inputField.blur(); // Blur the input field when showing error notification
+          console.error('Error: sheetData.range is undefined.');
         }
+      });
+      if (codeFound) {
+        successCount = (successCount % 5) + 1;
+        console.log('Success count:', successCount);
+        successSounds[successCount - 1].play();
+        console.log('Code found:', code);
+        showSuccessNotification();
+      } else {
+        errorSound.play();
+        console.log('Code not found:', code);
+        showNotification('error');
+        inputField.blur(); // Blur the input field when showing error notification
+      }
+    }
+    // Function to update date and time
+    function updateDateTime(code, row, codeIndex) {
+      // Lấy thời gian hiện tại
+      const now = new Date();
+      // Định dạng thời gian
+      const formattedDateTime = now.toLocaleString();
+      // Lấy giá trị từ select
+      const action = document.getElementById('action-select').value;
+      // Xác định vị trí cập nhật thời gian trong row dựa trên action
+      let dateTimeIndex;
+      if (action === 'Check in TQ') {
+        dateTimeIndex = 12; // Vị trí cột "Check in TQ"
+      } else if (action === 'Check out TQ') {
+        dateTimeIndex = 13; // Vị trí cột "Check out TQ"
+      } else if (action === 'Check in VN') {
+        dateTimeIndex = 14; // Vị trí cột "Check in VN"
+      } else if (action === 'Check out VN') {
+        dateTimeIndex = 15; // Vị trí cột "Check out VN"
+      }
+      // Cập nhật thời gian vào row
+      row[dateTimeIndex] = formattedDateTime;
+      // Log thông báo thành công
+      console.log(`Đã ${action}`);
     }
 
     // Function to show success notifications alternately
@@ -352,8 +434,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-
-
 
 
 //▶️
