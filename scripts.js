@@ -177,15 +177,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorNotification = document.getElementById('error-notification');
     const successOverlay = document.getElementById('success-overlay');
     const errorOverlay = document.getElementById('error-overlay');
-    const successSound = document.getElementById('success-sound');
     const errorSound = document.getElementById('error-sound');
     const okButton = document.getElementById('ok-button');
 
-    let variableA = ''; // Variable to store current input
-    let variableB = ''; // Variable to store previous input
+    const successSounds = [
+        document.getElementById('success-sound1'),
+        document.getElementById('success-sound2'),
+        document.getElementById('success-sound3'),
+        document.getElementById('success-sound4'),
+        document.getElementById('success-sound5')
+    ];
+
+    let variableA = ''; 
+    let variableB = ''; 
     let isVariableAActive = false;
-    let isErrorNotificationVisible = false; // Flag to track error notification visibility
-    let enterPressCount = 0; // Counter for Enter key presses
+    let isErrorNotificationVisible = false; 
+    let enterPressCount = 0; 
+    let successCount = 0; 
+    let currentDisplay = 'overlay';
 
     // Load data from localStorage
     const loadData = () => {
@@ -198,7 +207,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Function to handle Enter key press on the input field
     function handleEnterKey(event) {
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && !isErrorNotificationVisible) {
             event.preventDefault();
             const inputValue = inputField.value.trim();
 
@@ -213,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('Variable A set to:', variableA);
                 }
                 
-                inputField.value = ''; // Clear input field
+                inputField.value = ''; 
                 searchInData(variableA);
             }
         }
@@ -224,7 +233,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = loadData();
         let codeFound = false;
 
-        // Log searching action
         console.log('Searching for code:', code);
 
         data.forEach(row => {
@@ -234,15 +242,56 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         if (codeFound) {
-            // Play success sound
-            successSound.play();
+            successCount = (successCount % 5) + 1;
+            console.log('Success count:', successCount);
+
+            successSounds[successCount - 1].play();
             console.log('Code found:', code);
-            showNotification('success');
+            showSuccessNotification();
         } else {
-            // Play error sound and show error notification
             errorSound.play();
             console.log('Code not found:', code);
             showNotification('error');
+            inputField.blur(); // Blur the input field when showing error notification
+        }
+    }
+
+    // Function to show success notifications alternately
+    function showSuccessNotification() {
+        if (currentDisplay === 'overlay') {
+            successOverlay.classList.add('hidden');
+            successOverlay.style.opacity = '1';
+
+            successNotification.classList.remove('hidden');
+            successNotification.style.opacity = '1';
+            currentDisplay = 'notification';
+
+            setTimeout(() => {
+                successNotification.style.transition = 'opacity 2s';
+                successNotification.style.opacity = '0';
+
+                setTimeout(() => {
+                    successNotification.classList.add('hidden');
+                    successNotification.style.opacity = '1';
+                }, 500);
+            }, 500);
+        } else {
+            successNotification.classList.add('hidden');
+            successNotification.style.opacity = '1';
+
+            successOverlay.classList.remove('hidden');
+            successOverlay.style.opacity = '1';
+            currentDisplay = 'overlay';
+
+            setTimeout(() => {
+                successOverlay.style.transition = 'opacity 2s';
+                successOverlay.style.opacity = '0';
+
+                setTimeout(() => {
+                    successOverlay.classList.add('hidden');
+                    successOverlay.style.opacity = '1';
+                }, 500);
+            }, 500);
         }
     }
 
@@ -251,31 +300,17 @@ document.addEventListener('DOMContentLoaded', function() {
         if (type === 'error') {
             errorOverlay.classList.remove('hidden');
             errorNotification.classList.remove('hidden');
-            isErrorNotificationVisible = true; // Set flag to true when error notification is shown
-            enterPressCount = 0; // Reset Enter press counter
-        } else if (type === 'success') {
-        	successOverlay.classList.remove('hidden');
-            successNotification.classList.remove('hidden');
-           
-            // Hide error notification if visible
-            if (isErrorNotificationVisible) {
-                hideNotification();
-            }
+            isErrorNotificationVisible = true; 
+            enterPressCount = 0; 
 
-            // Apply the fading effect for success notification
-            setTimeout(() => {
-                successOverlay.style.transition = 'opacity 2s';
-                successOverlay.style.opacity = '0';
-                successNotification.style.transition = 'opacity 2s';
-                successNotification.style.opacity = '0';
+            // Add click event listener to error notification
+            errorNotification.addEventListener('click', function() {
+                alert('You clicked the error notification!');
+                hideNotification(); 
+            });
 
-                setTimeout(() => {
-                    successOverlay.classList.add('hidden');
-                    successOverlay.style.opacity = '1'; // Reset opacity for future notifications
-                    successNotification.classList.add('hidden');
-                    successNotification.style.opacity = '1'; // Reset opacity for future notifications
-                }, 500); // Time for fade-out effect
-            }, 500); // Display duration before fading out
+            // Add a global click event to unfocus the input field when clicking outside
+            document.addEventListener('click', handleDocumentClick);
         }
     }
 
@@ -283,7 +318,20 @@ document.addEventListener('DOMContentLoaded', function() {
     function hideNotification() {
         errorOverlay.classList.add('hidden');
         errorNotification.classList.add('hidden');
-        isErrorNotificationVisible = false; // Reset flag
+        isErrorNotificationVisible = false; 
+
+        // Remove the global click event to unfocus the input field
+        document.removeEventListener('click', handleDocumentClick);
+
+        // Refocus the input field after error notification is hidden
+        inputField.focus();
+    }
+
+    // Function to handle clicks outside the input field
+    function handleDocumentClick(event) {
+        if (!inputField.contains(event.target) && isErrorNotificationVisible) {
+            inputField.blur();
+        }
     }
 
     // Attach event listener to the input field
@@ -304,6 +352,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+
+
 
 //▶️
 
