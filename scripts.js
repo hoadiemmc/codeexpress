@@ -30,29 +30,6 @@ function setBackground() {
 
   const randomImage = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-    // Lấy element audio
-    const audioElement = document.getElementById('success-sound'); 
-
-    // Kiểm tra xem đã được cấp quyền âm thanh chưa
-    if (Notification.permission === 'granted') {
-      // Đã có quyền, phát âm thanh ngay
-      audioElement.play();
-    } else if (Notification.permission !== 'denied') {
-      // Chưa có quyền, yêu cầu quyền
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          // Đã được cấp quyền, phát âm thanh
-          audioElement.play();
-        } else {
-          // Không được cấp quyền
-          console.log('Người dùng không cho phép sử dụng âm thanh.');
-        }
-      });
-    } else {
-      // Đã bị từ chối quyền trước đó
-      console.log('Người dùng đã từ chối sử dụng âm thanh.');
-    }
-
   let images;
   if (hour >= 6 && hour < 12) {
     images = morningImages;
@@ -229,6 +206,30 @@ document.addEventListener('DOMContentLoaded', function() {
         return [];
     };
 
+    function authenticate() {
+      return gapi.auth2.getAuthInstance()
+          .signIn({scope: "https://www.googleapis.com/auth/spreadsheets"})
+          .then(function() {
+            console.log("Sign-in successful");
+          }, function(err) {
+            console.error("Error signing in", err);
+          });
+    }
+    
+    function loadClient() {
+      gapi.client.setApiKey("AIzaSyBnJE88L26osSH-KX1xXRrL5VhGTR-2q1Q");
+      return gapi.client.load("https://sheets.googleapis.com/$discovery/rest?version=v4")
+          .then(function() {
+            console.log("GAPI client loaded for API");
+          }, function(err) {
+            console.error("Error loading GAPI client for API", err);
+          });
+    }
+    
+    gapi.load("client:auth2", function() {
+      gapi.auth2.init({client_id: "537835419971-slhb3gs8si045p3auoipjfq2bmat7jgl.apps.googleusercontent.com"});
+    });
+    
     // Function to handle Enter key press on the input field
     function handleEnterKey(event) {
         if (event.key === 'Enter' && !isErrorNotificationVisible) {
@@ -263,56 +264,101 @@ document.addEventListener('DOMContentLoaded', function() {
       return rowInfo;
     }
 
-    // Function to search for the code in stored data
-    function searchInData(code) {
-      const data = loadData();
-      let codeFound = false;
-      let sheetName = ''; // Biến lưu tên trang tính
-      console.log('Searching for code:', code);
-      // Duyệt qua từng phần tử trong mảng `data`
-      data.forEach((sheetData, sheetIndex) => {
-        // Kiểm tra xem sheetData.range có tồn tại hay không
-        if (sheetData.range) {
-          // Lấy tên trang tính từ `sheetData.range`
-          sheetName = sheetData.range.split('!')[0];
-          // Lấy tiêu đề cột từ mảng đầu tiên của sheetData.values
-          const columnHeaders = sheetData.values[0]; 
-          // Duyệt qua từng dòng trong `sheetData.values`
-          sheetData.values.forEach((row, rowIndex) => {
-            // Bỏ qua dòng đầu tiên (dòng tiêu đề)
-            if (rowIndex > 0 && row.includes(code)) {
-              codeFound = true;
-              // Tìm vị trí của mã trong row
-              const codeIndex = row.indexOf(code);
-              // Cập nhật thời gian vào data
-              updateDateTime(code, row, codeIndex);
-              // Lưu data vào localStorage
-              localStorage.setItem('sheetData', JSON.stringify(data));
-              // Lấy thông tin dòng data
-              const rowInfo = getRowInfo(row, rowIndex, columnHeaders); // Thêm columnHeaders vào getRowInfo
-              // Lấy hành động từ select
-              const action = document.getElementById('action-select').value;
-              // Log thông tin đầy đủ
-              console.log(`Đã ${action}\nTrang tính: ${sheetName}\n${rowInfo}`);
-            }
-          });
-        } else {
-          console.error('Error: sheetData.range is undefined.');
+    
+    // Function to send update request to Google Sheets via Apps Script
+function sendUpdateRequest(sheetName, cell, value) {
+  const apiUrl = 'https://script.google.com/macros/s/AKfycbxKjn4Bj9tsFWrVLJVAlBeoUVdIayxe5zEvPe8DVBSPF0DFL2jGCRobYCMwKZKMuhBjHw/exec';
+
+  fetch(apiUrl, {
+    method: 'POST',
+    mode: 'no-cors', // Thêm chế độ này để bỏ qua kiểm tra CORS
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      sheetName: sheetName,
+      cell: cell,
+      value: value
+    })
+  })
+  .then(() => {
+    console.log('Request sent (no-cors mode).');
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+}
+
+
+// Function to search for the code in stored data and update Google Sheets
+function searchInData(code) {
+  const data = loadData();
+  let codeFound = false;
+  let sheetName = ''; // Biến lưu tên trang tính
+  console.log('Searching for code:', code);
+  
+  // Duyệt qua từng phần tử trong mảng `data`
+  data.forEach((sheetData, sheetIndex) => {
+    if (sheetData.range) {
+      sheetName = sheetData.range.split('!')[0]; // Lấy tên trang tính từ `sheetData.range`
+      const columnHeaders = sheetData.values[0]; // Lấy tiêu đề cột từ mảng đầu tiên của sheetData.values
+      
+      sheetData.values.forEach((row, rowIndex) => {
+        if (rowIndex > 0 && row.includes(code)) {
+          codeFound = true;
+          const codeIndex = row.indexOf(code);
+          updateDateTime(code, row, codeIndex);
+          localStorage.setItem('sheetData', JSON.stringify(data)); // Lưu lại dữ liệu đã cập nhật vào localStorage
+          
+          const rowInfo = getRowInfo(row, rowIndex, columnHeaders);
+          const action = document.getElementById('action-select').value;
+
+          console.log(`Đã ${action}\nTrang tính: ${sheetName}\n${rowInfo}`);
+
+          // Xác định ô và giá trị cần cập nhật dựa trên hành động
+          let cell = '';
+          let value = '';
+          
+          if (action === 'Check out VN') {
+            cell = `P${rowIndex + 1}`;
+            value = row[15]; // Giá trị từ cột Check out VN (P)
+          } else if (action === 'Check in VN') {
+            cell = `O${rowIndex + 1}`;
+            value = row[14]; // Giá trị từ cột Check in VN (O)
+          } else if (action === 'Check out TQ') {
+            cell = `N${rowIndex + 1}`;
+            value = row[13]; // Giá trị từ cột Check out TQ (N)
+          } else if (action === 'Check in TQ') {
+            cell = `M${rowIndex + 1}`;
+            value = row[12]; // Giá trị từ cột Check in TQ (M)
+          } else if (action === 'Check in') {
+            cell = `L${rowIndex + 1}`;
+            value = row[11]; // Giá trị từ cột Check in (L)
+          }
+
+          // Gửi yêu cầu cập nhật tới Google Sheets
+          sendUpdateRequest(sheetName, cell, value);
         }
       });
-      if (codeFound) {
-        successCount = (successCount % 5) + 1;
-        console.log('Success count:', successCount);
-        successSounds[successCount - 1].play();
-        console.log('Code found:', code);
-        showSuccessNotification();
-      } else {
-        errorSound.play();
-        console.log('Code not found:', code);
-        showNotification('error');
-        inputField.blur(); // Blur the input field when showing error notification
-      }
+    } else {
+      console.error('Error: sheetData.range is undefined.');
     }
+  });
+
+  if (codeFound) {
+    successCount = (successCount % 5) + 1;
+    console.log('Success count:', successCount);
+    successSounds[successCount - 1].play();
+    console.log('Code found:', code);
+    showSuccessNotification();
+  } else {
+    errorSound.play();
+    console.log('Code not found:', code);
+    showNotification('error');
+    inputField.blur(); // Blur the input field when showing error notification
+  }
+}
+
     // Function to update date and time
     function updateDateTime(code, row, codeIndex) {
       // Lấy thời gian hiện tại
