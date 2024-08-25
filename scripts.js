@@ -206,30 +206,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return [];
     };
 
-    function authenticate() {
-      return gapi.auth2.getAuthInstance()
-          .signIn({scope: "https://www.googleapis.com/auth/spreadsheets"})
-          .then(function() {
-            console.log("Sign-in successful");
-          }, function(err) {
-            console.error("Error signing in", err);
-          });
-    }
-    
-    function loadClient() {
-      gapi.client.setApiKey("AIzaSyBnJE88L26osSH-KX1xXRrL5VhGTR-2q1Q");
-      return gapi.client.load("https://sheets.googleapis.com/$discovery/rest?version=v4")
-          .then(function() {
-            console.log("GAPI client loaded for API");
-          }, function(err) {
-            console.error("Error loading GAPI client for API", err);
-          });
-    }
-    
-    gapi.load("client:auth2", function() {
-      gapi.auth2.init({client_id: "537835419971-slhb3gs8si045p3auoipjfq2bmat7jgl.apps.googleusercontent.com"});
-    });
-    
     // Function to handle Enter key press on the input field
     function handleEnterKey(event) {
         if (event.key === 'Enter' && !isErrorNotificationVisible) {
@@ -264,80 +240,52 @@ document.addEventListener('DOMContentLoaded', function() {
       return rowInfo;
     }
 
-    
-    // Function to send update request to Google Sheets via Apps Script
-function sendUpdateRequest(sheetName, cell, value) {
-  const apiUrl = 'https://script.google.com/macros/s/AKfycbxKjn4Bj9tsFWrVLJVAlBeoUVdIayxe5zEvPe8DVBSPF0DFL2jGCRobYCMwKZKMuhBjHw/exec';
-
-  fetch(apiUrl, {
-    method: 'POST',
-    mode: 'no-cors', // Thêm chế độ này để bỏ qua kiểm tra CORS
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      sheetName: sheetName,
-      cell: cell,
-      value: value
-    })
-  })
-  .then(() => {
-    console.log('Request sent (no-cors mode).');
-  })
-  .catch(error => {
-    console.error('Error:', error);
-  });
-}
-
-
-// Function to search for the code in stored data and update Google Sheets
+    // Hàm tìm kiếm và gửi dữ liệu tới Apps Script
 function searchInData(code) {
   const data = loadData();
   let codeFound = false;
   let sheetName = ''; // Biến lưu tên trang tính
+  let cell = ''; // Biến lưu vị trí ô
+  let value = ''; // Biến lưu giá trị thời gian cập nhật
+
   console.log('Searching for code:', code);
-  
-  // Duyệt qua từng phần tử trong mảng `data`
+
   data.forEach((sheetData, sheetIndex) => {
     if (sheetData.range) {
-      sheetName = sheetData.range.split('!')[0]; // Lấy tên trang tính từ `sheetData.range`
-      const columnHeaders = sheetData.values[0]; // Lấy tiêu đề cột từ mảng đầu tiên của sheetData.values
-      
+      sheetName = sheetData.range.split('!')[0];
+      const columnHeaders = sheetData.values[0];
       sheetData.values.forEach((row, rowIndex) => {
         if (rowIndex > 0 && row.includes(code)) {
           codeFound = true;
           const codeIndex = row.indexOf(code);
-          updateDateTime(code, row, codeIndex);
-          localStorage.setItem('sheetData', JSON.stringify(data)); // Lưu lại dữ liệu đã cập nhật vào localStorage
-          
-          const rowInfo = getRowInfo(row, rowIndex, columnHeaders);
+
+          // Cập nhật thời gian và xác định cell
+          const now = new Date();
+          const formattedDateTime = now.toLocaleString();
           const action = document.getElementById('action-select').value;
+          let dateTimeIndex;
 
-          console.log(`Đã ${action}\nTrang tính: ${sheetName}\n${rowInfo}`);
-
-          // Xác định ô và giá trị cần cập nhật dựa trên hành động
-          let cell = '';
-          let value = '';
-          
-          if (action === 'Check out VN') {
-            cell = `P${rowIndex + 1}`;
-            value = row[15]; // Giá trị từ cột Check out VN (P)
-          } else if (action === 'Check in VN') {
-            cell = `O${rowIndex + 1}`;
-            value = row[14]; // Giá trị từ cột Check in VN (O)
+          if (action === 'Check in TQ') {
+            dateTimeIndex = 12; // Vị trí cột "Check in TQ"
           } else if (action === 'Check out TQ') {
-            cell = `N${rowIndex + 1}`;
-            value = row[13]; // Giá trị từ cột Check out TQ (N)
-          } else if (action === 'Check in TQ') {
-            cell = `M${rowIndex + 1}`;
-            value = row[12]; // Giá trị từ cột Check in TQ (M)
-          } else if (action === 'Check in') {
-            cell = `L${rowIndex + 1}`;
-            value = row[11]; // Giá trị từ cột Check in (L)
+            dateTimeIndex = 13; // Vị trí cột "Check out TQ"
+          } else if (action === 'Check in VN') {
+            dateTimeIndex = 14; // Vị trí cột "Check in VN"
+          } else if (action === 'Check out VN') {
+            dateTimeIndex = 15; // Vị trí cột "Check out VN"
           }
 
-          // Gửi yêu cầu cập nhật tới Google Sheets
-          sendUpdateRequest(sheetName, cell, value);
+          row[dateTimeIndex] = formattedDateTime;
+          cell = String.fromCharCode(65 + dateTimeIndex) + (rowIndex + 1); // Xác định ô cần cập nhật
+          value = formattedDateTime;
+
+          console.log(`Đã ${action}\nTrang tính: ${sheetName}\n${getRowInfo(row, rowIndex, columnHeaders)}`);
+          
+          // Gửi yêu cầu POST tới Apps Script để cập nhật Google Sheets
+          sendPostRequestToAppsScript(sheetName, cell, value);
+
+          // Lưu data vào localStorage
+          localStorage.setItem('sheetData', JSON.stringify(data));
         }
       });
     } else {
@@ -357,6 +305,38 @@ function searchInData(code) {
     showNotification('error');
     inputField.blur(); // Blur the input field when showing error notification
   }
+}
+
+// Hàm gửi yêu cầu POST tới Apps Script
+function sendPostRequestToAppsScript(sheetName, cell, value) {
+  // Loại bỏ khoảng trắng thừa và dấu ngoặc đơn xung quanh tên trang tính
+  sheetName = sheetName.trim().replace(/^'+|'+$/g, "");
+
+  console.log('Sending request to Apps Script with:', sheetName, cell, value);
+
+  const url = 'https://cors-anywhere.herokuapp.com/https://script.google.com/macros/s/AKfycbwQZ2L2jJAVEJHIu1sInbpGoPNibPs--lV-z4BadEbu7ONSE7G784tefnarM3C_QI0MZg/exec';
+  
+  const data = {
+    sheetName: sheetName, // Tên của trang tính cần cập nhật
+    cell: cell,           // Ô cần cập nhật
+    value: value          // Giá trị mới để điền vào ô
+  };
+
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", url, true);
+  xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState === 4) {
+      if (xhr.status === 200) {
+        console.log('Phản hồi từ Apps Script:', xhr.responseText);
+      } else {
+        console.error('Có lỗi xảy ra:', xhr.statusText);
+      }
+    }
+  };
+
+  xhr.send(JSON.stringify(data));
 }
 
     // Function to update date and time
