@@ -314,7 +314,7 @@ function sendPostRequestToAppsScript(sheetName, cell, value) {
 
   console.log('Sending request to Apps Script with:', sheetName, cell, value);
 
-  const url = 'https://cors-anywhere.herokuapp.com/https://script.google.com/macros/s/AKfycbwQZ2L2jJAVEJHIu1sInbpGoPNibPs--lV-z4BadEbu7ONSE7G784tefnarM3C_QI0MZg/exec';
+  const url = 'https://script.google.com/macros/s/AKfycbwQZ2L2jJAVEJHIu1sInbpGoPNibPs--lV-z4BadEbu7ONSE7G784tefnarM3C_QI0MZg/exec';
   
   const data = {
     sheetName: sheetName, // Tên của trang tính cần cập nhật
